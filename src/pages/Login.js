@@ -1,60 +1,88 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
 
-  const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const onSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', formData);
-      
-      // 1. Clear any old session data first
-      localStorage.clear(); 
+      const res = await axios.post('http://localhost:5000/api/auth/login', {
+        // This is the specific fix for case-sensitivity
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password
+      });
 
-      // 2. Save NEW session data
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-
-      // 3. Normalize the role for comparison
-      const userRole = res.data.user.role?.toLowerCase() || 'guest';
-
-      // 4. Map-based Routing
-      const roleRoutes = {
-        admin: '/dashboard',
-        doctor: '/appointment-manager',
-        nurse: '/appointment-manager',
-        patient: '/records'
-      };
-
-      // 5. Execute Navigation
-      const targetPath = roleRoutes[userRole] || '/records';
-
-      console.log(`🔐 Access Granted | Role: ${userRole} | Destination: ${targetPath}`);
-      navigate(targetPath);
-
+      localStorage.setItem('userRole', res.data.user.role);
+      
+      // Force refresh so Navbar appears instantly
+      window.location.href = '/dashboard';
     } catch (err) {
-      alert('Login Failed: ' + (err.response?.data?.msg || 'Server Error'));
+      setError(err.response?.data?.msg || 'Login failed. Please check your credentials.');
     }
-  }; // Fixed missing closing brace here
+  };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center' }}>
-      <h1>Megalife HMS</h1>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input type="email" name="email" placeholder="Staff Email" onChange={onChange} required style={inputStyle} />
-        <input type="password" name="password" placeholder="Password" onChange={onChange} required style={inputStyle} />
-        <button type="submit" style={btnStyle}>Login to System</button>
-      </form>
+    <div style={containerStyle}>
+      <div style={loginCard}>
+        <div style={headerStyle}>
+          <h2 style={{ margin: 0, color: '#2c3e50' }}>MegaLife Login</h2>
+          <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>Enter credentials to access hospital system</p>
+        </div>
+
+        {error && (
+          <div style={errorBox}>
+            <AlertCircle size={18} /> {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div style={inputGroup}>
+            <label style={labelStyle}><Mail size={16} /> Email Address</label>
+            <input 
+              type="email" 
+              style={inputStyle} 
+              placeholder="doctor@megalife.com"
+              required 
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+            />
+          </div>
+
+          <div style={inputGroup}>
+            <label style={labelStyle}><Lock size={16} /> Password</label>
+            <input 
+              type="password" 
+              style={inputStyle} 
+              placeholder="••••••••"
+              required 
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+            />
+          </div>
+
+          <button type="submit" style={loginBtn}>
+            <LogIn size={18} /> Login to System
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
 
-const inputStyle = { padding: '10px', borderRadius: '5px', border: '1px solid #ccc' };
-const btnStyle = { padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' };
+// --- STYLES ---
+const containerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f1f5f9' };
+const loginCard = { backgroundColor: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px' };
+const headerStyle = { textAlign: 'center', marginBottom: '30px' };
+const inputGroup = { marginBottom: '20px' };
+const labelStyle = { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' };
+const inputStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', boxSizing: 'border-box' };
+const loginBtn = { width: '100%', padding: '14px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' };
+const errorBox = { backgroundColor: '#fee2e2', color: '#b91c1c', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' };
 
 export default Login;

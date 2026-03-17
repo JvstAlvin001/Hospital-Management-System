@@ -1,56 +1,70 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  UserPlus, 
+  Database, 
+  ClipboardList, 
+  CreditCard, 
+  LogOut 
+} from 'lucide-react';
 
 const Navbar = () => {
-  const navigate = useNavigate();
-  
-  // 1. Get the user data we saved in Login.js
-  const user = JSON.parse(localStorage.getItem('user'));
+  const userRole = localStorage.getItem('userRole'); // Get role for hiding links
 
-  // 2. Logout function
   const handleLogout = () => {
-    localStorage.clear(); // Wipe the token and role
-    navigate('/login');    // Send back to login
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    window.location.href = '/login';
   };
 
-  // 3. If no user is logged in, don't show the navbar at all
-  if (!user) return null;
-
-  const role = user.role?.toLowerCase();
-
   return (
-    <nav style={navStyle}>
-      <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Megalife HMS</div>
-      
-      <div style={linksStyle}>
-        {/* Links for EVERYONE who is logged in */}
-        <Link to="/" style={linkItem}>Home</Link>
-
-        {/* Links only for ADMIN */}
-        {role === 'admin' && (
-          <Link to="/dashboard" style={linkItem}>Admin Stats</Link>
-        )}
-
-        {/* Links for DOCTORS and NURSES */}
-        {(role === 'admin' || role === 'doctor' || role === 'nurse') && (
-          <Link to="/appointment-manager" style={linkItem}>Appointments</Link>
-        )}
-
-        {/* Links for BILLING */}
-        {(role === 'admin' || role === 'accountant') && (
-          <Link to="/billing" style={linkItem}>Billing</Link>
-        )}
-
-        <button onClick={handleLogout} style={logoutBtn}>Logout ({user.name})</button>
+    <nav style={navbarStyle}>
+      <div style={logoStyle}>
+        <h2 style={{ color: '#2c3e50', margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>
+          MegaLife Hospital
+        </h2>
       </div>
+
+      <div style={linksContainer}>
+        <Link to="/dashboard" style={navLinkStyle}>
+          <LayoutDashboard size={18} /> Dashboard
+        </Link>
+        
+        {/* Only Admins can register new patients */}
+        {userRole === 'Admin' && (
+          <Link to="/register-patient" style={navLinkStyle}>
+            <UserPlus size={18} /> Register Patient
+          </Link>
+        )}
+
+        <Link to="/records" style={navLinkStyle}>
+          <Database size={18} /> Patient Records
+        </Link>
+
+        <Link to="/appointment-manager" style={navLinkStyle}>
+          <ClipboardList size={18} /> Appointment Manager
+        </Link>
+
+        {/* Only Admins or Accountants see Billing */}
+        {(userRole === 'Admin' || userRole === 'Accountant') && (
+          <Link to="/billing" style={navLinkStyle}>
+            <CreditCard size={18} /> Billing
+          </Link>
+        )}
+      </div>
+
+      <button onClick={handleLogout} style={logoutBtnStyle}>
+        <LogOut size={16} /> Logout
+      </button>
     </nav>
   );
 };
 
-// Simple Styles
-const navStyle = { display: 'flex', justifyContent: 'space-between', padding: '15px 30px', background: '#007bff', color: 'white', alignItems: 'center' };
-const linksStyle = { display: 'flex', gap: '20px', alignItems: 'center' };
-const linkItem = { color: 'white', textDecoration: 'none', fontWeight: '500' };
-const logoutBtn = { backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer' };
+const navbarStyle = { backgroundColor: '#ffffff', height: '70px', width: '100%', position: 'fixed', top: 0, left: 0, display: 'flex', alignItems: 'center', padding: '0 40px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', zIndex: 1000, boxSizing: 'border-box', borderBottom: '1px solid #e2e8f0' };
+const logoStyle = { marginRight: '50px' };
+const linksContainer = { display: 'flex', alignItems: 'center', gap: '10px', flexGrow: 1 };
+const navLinkStyle = { display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', textDecoration: 'none', padding: '10px 15px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500' };
+const logoutBtnStyle = { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff1f2', color: '#e11d48', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' };
 
 export default Navbar;

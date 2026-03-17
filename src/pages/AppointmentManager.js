@@ -1,129 +1,154 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Clock, User, Stethoscope, Search } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle } from 'lucide-react';
 
 const AppointmentManager = () => {
   const [appointments, setAppointments] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/appointments/all', {
-          headers: { 'x-auth-token': token }
-        });
-        
-        console.log("SERVER DATA:", res.data);
-        setAppointments(res.data);
-      } catch (err) {
-        console.error("FETCH ERROR:", err.response?.data || err.message);
-      }
-    };
     fetchAppointments();
   }, []);
+
+  const fetchAppointments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/appointments/all', {
+        headers: { 'x-auth-token': token }
+      });
+      setAppointments(res.data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+      setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5000/api/appointments/${newStatus}/${id}`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      fetchAppointments();
+    } catch (err) {
+      alert("Failed to update status");
+    }
+  };
 
   return (
     <div style={containerStyle}>
       <header style={headerStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={iconBoxStyle}><Clock color="#3498db" size={24} /></div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#2c3e50' }}>Appointment Schedule</h1>
-            <p style={{ margin: 0, color: '#7f8c8d' }}>Manage and track patient visits</p>
-          </div>
+          <Calendar size={28} color="#3498db" />
+          <h1 style={{ margin: 0, color: '#2c3e50', fontSize: '1.8rem' }}>Appointment Manager</h1>
         </div>
       </header>
 
-      <div style={searchBarArea}>
-        <div style={searchWrapper}>
-          <Search size={18} color="#95a5a6" />
-          <input 
-            type="text" 
-            placeholder="Search by patient name..." 
-            style={searchInput}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div style={tableContainer}>
-        <table style={tableStyle}>
-          <thead>
-            <tr style={tableHeader}>
-              <th style={{ padding: '15px' }}>Patient</th>
-              <th>Reason</th>
-              <th>Time</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.length > 0 ? (
-              appointments
-                .filter(app => {
-                  const name = app.patientId?.fullName || "";
-                  return name.toLowerCase().includes(searchTerm.toLowerCase());
-                })
-                .map((app) => (
-                  <tr key={app._id} style={tableRow}>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <User size={16} color="#34495e" />
-                        <strong>{app.patientId?.fullName || "Name Missing"}</strong>
-                      </div>
-                    </td>
-                    <td>{app.reason}</td>
-                    <td>{app.date ? new Date(app.date).toLocaleDateString() : 'N/A'} at {app.time}</td>
-                    <td>
-                      <span style={app.status === 'Scheduled' ? statusPending : statusPaid}>
-                        {app.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-            ) : (
-              <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
-                  No appointments found in the database.
-                </td>
+      {loading ? (
+        <p>Loading schedule...</p>
+      ) : (
+        <div style={tableContainer}>
+          <table style={tableStyle}>
+            <thead>
+              <tr style={headerRow}>
+                <th style={thStyle}>Patient Name</th>
+                <th style={thStyle}>Doctor</th>
+                <th style={thStyle}>Date & Time</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {appointments.map((appt) => (
+                <tr key={appt._id} style={rowStyle}>
+                  <td style={tdStyle}>{appt.patientId?.fullName || 'N/A'}</td>
+                  <td style={tdStyle}>Dr. {appt.doctorId?.name || 'Unassigned'}</td>
+                  <td style={tdStyle}>
+                    <div style={{ fontWeight: '500' }}>{new Date(appt.date).toLocaleDateString()}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{appt.time}</div>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={getStatusStyle(appt.status)}>{appt.status}</span>
+                  </td>
+                  <td style={tdStyle}>
+                    {appt.status === 'Scheduled' && (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                          onClick={() => handleStatusUpdate(appt._id, 'complete')}
+                          style={completeBtn}
+                        >
+                          <CheckCircle size={14} /> Done
+                        </button>
+                        <button 
+                          onClick={() => handleStatusUpdate(appt._id, 'cancel')}
+                          style={cancelBtn}
+                        >
+                          <XCircle size={14} /> Cancel
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  ); 
+  );
 };
 
-// --- STYLES SECTION ---
-const containerStyle = { padding: '40px', backgroundColor: '#f8fafc', minHeight: '100vh' };
+// --- STYLES ---
+const containerStyle = { 
+  padding: '110px 40px 40px 40px', 
+  backgroundColor: '#f8fafc', 
+  minHeight: '100vh' 
+};
+
 const headerStyle = { marginBottom: '30px' };
-const iconBoxStyle = { backgroundColor: '#3498db20', padding: '12px', borderRadius: '10px' };
-const searchBarArea = { marginBottom: '20px' };
-const searchWrapper = { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'white', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' };
-const searchInput = { border: 'none', outline: 'none', width: '100%' };
-const tableContainer = { backgroundColor: 'white', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse' };
-const tableHeader = { backgroundColor: '#f1f5f9', textAlign: 'left', color: '#64748b' };
-const tableRow = { borderBottom: '1px solid #f1f5f9' };
+const tableContainer = { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', overflow: 'hidden' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
+const headerRow = { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' };
+const thStyle = { padding: '15px 20px', color: '#64748b', fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase' };
+const tdStyle = { padding: '12px 20px', borderBottom: '1px solid #f1f5f9', color: '#334155', fontSize: '0.95rem' };
+const rowStyle = { transition: 'background 0.2s' };
 
-// Fixed missing styles:
-const statusPending = { 
-  backgroundColor: '#fef3c7', 
-  color: '#d97706', 
-  padding: '4px 12px', 
-  borderRadius: '20px', 
-  fontSize: '0.85rem',
-  fontWeight: 'bold'
+const getStatusStyle = (status) => ({
+  padding: '4px 12px',
+  borderRadius: '20px', // Pill shape status
+  fontSize: '0.75rem',
+  fontWeight: '600',
+  backgroundColor: status === 'Completed' ? '#ecfdf5' : status === 'Cancelled' ? '#fff1f2' : '#fffbeb',
+  color: status === 'Completed' ? '#10b981' : status === 'Cancelled' ? '#e11d48' : '#d97706',
+  border: `1px solid ${status === 'Completed' ? '#10b98133' : status === 'Cancelled' ? '#e11d4833' : '#d9770633'}`
+});
+
+// THE ROUNDED PILL BUTTON STYLES
+const btnBase = { 
+  border: '1px solid', 
+  borderRadius: '20px', // FULLY ROUNDED
+  cursor: 'pointer', 
+  display: 'flex', 
+  alignItems: 'center', 
+  gap: '5px', 
+  padding: '5px 14px', // Slightly wider for the pill look
+  fontSize: '0.75rem', 
+  fontWeight: '600',
+  backgroundColor: 'transparent',
+  transition: 'all 0.2s ease'
 };
 
-const statusPaid = { 
-  backgroundColor: '#d1fae5', 
-  color: '#059669', 
-  padding: '4px 12px', 
-  borderRadius: '20px', 
-  fontSize: '0.85rem',
-  fontWeight: 'bold'
+const completeBtn = { 
+  ...btnBase, 
+  borderColor: '#10b981', 
+  color: '#10b981' 
+};
+
+const cancelBtn = { 
+  ...btnBase, 
+  borderColor: '#e11d48', 
+  color: '#e11d48' 
 };
 
 export default AppointmentManager;

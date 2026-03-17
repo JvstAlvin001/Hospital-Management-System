@@ -1,83 +1,78 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Users, Calendar, DollarSign, AlertCircle, PlusCircle, CreditCard, ClipboardList } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Calendar, DollarSign, AlertCircle, UserPlus, CreditCard, ClipboardList } from 'lucide-react';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
-    patientCount: 0,
-    appointmentCount: 0,
-    totalRevenue: 0,
-    pendingPayments: 0
-  });
+  const navigate = useNavigate();
+  const userRole = localStorage.getItem('userRole'); // Get role to hide buttons
+  const [stats, setStats] = useState({ totalPatients: 0, pendingAppointments: 0, totalRevenue: 0, totalUnpaidAmount: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/stats/summary');
+        const token = localStorage.getItem('token');
+        const res = await axios.get('http://localhost:5000/api/stats/summary', { headers: { 'x-auth-token': token } });
         setStats(res.data);
-      } catch (err) {
-        console.error("Error loading stats", err);
-      }
+      } catch (err) { console.error(err); }
     };
     fetchStats();
   }, []);
 
   return (
     <div style={containerStyle}>
-      <header style={headerStyle}>
-        <h1 style={{ color: '#2c3e50', fontSize: '2.2rem' }}>Hospital Command Center</h1>
-        <p style={{ color: '#7f8c8d' }}>Real-time overview of Megalife operations</p>
+      <header style={{ marginBottom: '40px' }}>
+        <h1>Hospital Command Center</h1>
+        <p>Logged in as: <strong>{userRole}</strong></p>
       </header>
 
-      {/* STATS GRID */}
       <div style={gridStyle}>
-        <StatCard title="Total Patients" value={stats.patientCount} color="#3498db" Icon={Users} />
-        <StatCard title="Pending Appointments" value={stats.appointmentCount} color="#f1c40f" Icon={Calendar} />
-        <StatCard title="Total Revenue" value={`$${stats.totalRevenue}`} color="#2ecc71" Icon={DollarSign} />
-        <StatCard title="Unpaid Bills" value={`$${stats.pendingPayments}`} color="#e74c3c" Icon={AlertCircle} />
+        <StatCard title="Total Patients" value={stats.totalPatients} color="#3498db" Icon={Users} />
+        <StatCard title="Upcoming Appointments" value={stats.pendingAppointments} color="#f1c40f" Icon={Calendar} />
+        {userRole === 'Admin' && <StatCard title="Revenue" value={`KES ${stats.totalRevenue}`} color="#2ecc71" Icon={DollarSign} />}
       </div>
 
-      <div style={contentLayout}>
-        <div style={sectionStyle}>
-          <h3 style={{ marginBottom: '20px' }}>System Quick Actions</h3>
-          <div style={buttonGroup}>
-            <button style={actionBtn} onClick={() => window.location.href='/register-patient'}>
-              <PlusCircle size={18} /> Register Patient
+      <div style={{ marginTop: '50px', backgroundColor: 'white', padding: '30px', borderRadius: '15px' }}>
+        <h3>Quick Actions</h3>
+        <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+          {userRole === 'Admin' && (
+            <button style={blueBtn} onClick={() => navigate('/register-patient')}>
+              <UserPlus size={18} /> Register Patient
             </button>
-            <button style={actionBtn} onClick={() => window.location.href='/billing'}>
+          )}
+
+          <button style={purpleBtn} onClick={() => navigate('/book-appointment')}>
+            <Calendar size={18} /> Book Appointment
+          </button>
+
+          {userRole === 'Admin' && (
+            <button style={greenBtn} onClick={() => navigate('/billing')}>
               <CreditCard size={18} /> Process Payments
             </button>
-            <button style={actionBtn} onClick={() => window.location.href='/appointment-manager'}>
-              <ClipboardList size={18} /> View Schedule
-            </button>
-          </div>
+          )}
+
+          <button style={darkBtn} onClick={() => navigate('/appointment-manager')}>
+            <ClipboardList size={18} /> View Schedule
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Updated reusable component using Lucide Icons
 const StatCard = ({ title, value, color, Icon }) => (
-  <div style={{ ...cardStyle, borderLeft: `6px solid ${color}` }}>
-    <div style={{ backgroundColor: `${color}15`, padding: '15px', borderRadius: '12px' }}>
-      <Icon color={color} size={32} />
-    </div>
-    <div>
-      <h4 style={{ margin: '0', color: '#95a5a6', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{title}</h4>
-      <h2 style={{ margin: '5px 0 0 0', fontSize: '1.8rem', color: '#2c3e50' }}>{value}</h2>
-    </div>
+  <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', flex: 1, display: 'flex', alignItems: 'center', gap: '20px', borderLeft: `6px solid ${color}` }}>
+    <Icon color={color} size={30} />
+    <div><p style={{ margin: 0, color: '#95a5a6', fontSize: '0.8rem' }}>{title}</p><h2 style={{ margin: 0 }}>{value}</h2></div>
   </div>
 );
 
-// --- STYLES ---
-const containerStyle = { padding: '40px', backgroundColor: '#f8fafc', minHeight: '100vh' };
-const headerStyle = { marginBottom: '40px' };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '25px' };
-const cardStyle = { backgroundColor: 'white', padding: '25px', borderRadius: '15px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '20px' };
-const contentLayout = { marginTop: '50px' };
-const sectionStyle = { backgroundColor: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' };
-const buttonGroup = { display: 'flex', gap: '20px', flexWrap: 'wrap' };
-const actionBtn = { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', backgroundColor: '#2c3e50', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: '0.3s' };
+const containerStyle = { padding: '100px 40px', backgroundColor: '#f8fafc', minHeight: '100vh' };
+const gridStyle = { display: 'flex', gap: '25px' };
+const btnBase = { padding: '12px 20px', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 'bold' };
+const blueBtn = { ...btnBase, backgroundColor: '#3498db' };
+const purpleBtn = { ...btnBase, backgroundColor: '#9b59b6' };
+const greenBtn = { ...btnBase, backgroundColor: '#2ecc71' };
+const darkBtn = { ...btnBase, backgroundColor: '#2c3e50' };
 
 export default Dashboard;
